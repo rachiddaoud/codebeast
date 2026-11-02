@@ -1,6 +1,5 @@
-package com.bank.cardenrichment.web;
+package com.bank.cardenrichment.exception;
 
-import com.bank.cardenrichment.service.TapixException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;

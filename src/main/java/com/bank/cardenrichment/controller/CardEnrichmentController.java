@@ -1,4 +1,4 @@
-package com.bank.cardenrichment.web;
+package com.bank.cardenrichment.controller;
 
 import com.bank.cardenrichment.api.CardEnrichmentApi;
 import com.bank.cardenrichment.api.model.CardTransaction;

@@ -2,6 +2,8 @@ package com.bank.cardenrichment.service;
 
 import com.bank.cardenrichment.api.model.CardTransaction;
 import com.bank.cardenrichment.api.model.EnrichedCardTransaction;
+import com.bank.cardenrichment.exception.TapixException;
+import com.bank.cardenrichment.mapper.TapixMapper;
 import com.bank.cardenrichment.tapix.api.ShopsApi;
 import com.bank.cardenrichment.tapix.model.FindResultComplete;
 import com.bank.cardenrichment.tapix.model.RequestTX;

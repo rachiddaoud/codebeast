@@ -1,4 +1,4 @@
-package com.bank.cardenrichment.config;
+package com.bank.cardenrichment.client;
 
 import com.bank.cardenrichment.tapix.api.ShopsApi;
 import org.springframework.context.annotation.Bean;

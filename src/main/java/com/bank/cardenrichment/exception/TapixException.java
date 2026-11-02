@@ -1,4 +1,4 @@
-package com.bank.cardenrichment.service;
+package com.bank.cardenrichment.exception;
 
 public class TapixException extends RuntimeException {
 
