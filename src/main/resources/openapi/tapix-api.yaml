@@ -1,0 +1,229 @@
+openapi: 3.0.3
+info:
+  title: Tapix API (card transactions subset)
+  version: v6
+  description: |
+    Trimmed down from the public Tapix v6 spec (https://developers.tapix.io/tapix-original-doc/tapix_api_v6.yaml).
+    Only the "complete" card transaction endpoints are kept: one call returns the shop and its merchant.
+    Fields we don't use (debug, paymentGateway, co2Footprint, otherCategories...) are left out.
+
+    Auth: OAuth 2.0 client credentials, JWT valid 5 minutes, sent as `Authorization: Bearer <token>`.
+    Tapix rule: never cache these calls, call Tapix for every transaction.
+servers:
+  - url: https://{tapixHost}
+    variables:
+      tapixHost:
+        default: tapix.example
+security:
+  - oAuth2ClientCredentials: []
+paths:
+  /v6/shops/complete/findByCardTransaction:
+    get:
+      tags: [Shops]
+      operationId: findByCardTransactionComplete
+      summary: Find shop by raw card transaction data - complete response
+      description: |
+        If a parameter is not available, omit it. If it is available but empty, send it empty.
+      parameters:
+        - { name: description, in: query, schema: { type: string }, description: 'ISO 8583 field 43 (1-23) - card acceptor name / location. Necessary.' }
+        - { name: merchantId, in: query, schema: { type: string }, description: 'ISO 8583 field 42 - card acceptor identification code.' }
+        - { name: posId, in: query, schema: { type: string }, description: 'ISO 8583 field 41 - card acceptor terminal id.' }
+        - { name: city, in: query, schema: { type: string }, description: 'ISO 8583 field 43 (24-36) - city.' }
+        - { name: country, in: query, schema: { type: string }, description: 'ISO 3166-1 alpha-2 or alpha-3.' }
+        - { name: mcc, in: query, schema: { type: string }, description: 'ISO 8583 field 18 - merchant category code.' }
+        - { name: transactionTimestamp, in: query, schema: { type: string, format: date-time } }
+        - { name: sourceId, in: query, schema: { type: string, maxLength: 255 }, description: 'Stable hashed identifier of the card.' }
+        - { name: clientId, in: query, schema: { type: string }, description: 'Stable hashed identifier of the client.' }
+        - { name: currency, in: query, schema: { type: string } }
+        - { name: amount, in: query, schema: { type: number } }
+        - { name: refresh, in: query, schema: { type: boolean }, description: 'false for normal calls, true only during invalidation refresh.' }
+        - { name: ecommerceFlag, in: query, schema: { type: boolean } }
+        - { name: channelCode, in: query, schema: { type: string }, description: 'POS or ATM.' }
+        - { name: zip, in: query, schema: { type: string, maxLength: 16 } }
+      responses:
+        '200':
+          description: Search finished returning one shop
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FindResultComplete'
+        '400':
+          description: Invalid input or empty request
+  /v6/shops/complete/findByCardTransactionBatch:
+    post:
+      tags: [Shops]
+      operationId: findByCardTransactionBatchComplete
+      summary: Find shops by raw card transaction data batch - complete response
+      description: Results have the same order as the requests. Maximum 250 entries per request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestTXBatch'
+      responses:
+        '200':
+          description: Search finished returning one shop for every request
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/FindResultComplete'
+        '400':
+          description: Invalid input or empty request
+
+components:
+  securitySchemes:
+    oAuth2ClientCredentials:
+      type: oauth2
+      flows:
+        clientCredentials:
+          tokenUrl: https://tapix-auth.example/auth/realms/tapix-prod/protocol/openid-connect/token
+          scopes: {}
+
+  schemas:
+    RequestTX:
+      type: object
+      properties:
+        customId:
+          type: string
+          maxLength: 255
+          description: Returned unchanged in the response.
+        description:
+          type: string
+        merchantId:
+          type: string
+        posId:
+          type: string
+        city:
+          type: string
+        country:
+          type: string
+        mcc:
+          type: string
+        transactionTimestamp:
+          type: string
+          format: date-time
+        sourceId:
+          type: string
+          maxLength: 255
+        clientId:
+          type: string
+        currency:
+          type: string
+        amount:
+          type: number
+        refresh:
+          type: boolean
+        ecommerceFlag:
+          type: boolean
+        channelCode:
+          type: string
+        zip:
+          type: string
+          maxLength: 16
+
+    RequestTXBatch:
+      type: object
+      required: [requests]
+      properties:
+        requests:
+          type: array
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/RequestTX'
+
+    FindResultComplete:
+      type: object
+      properties:
+        result:
+          type: string
+          enum: [found, unsolved]
+        handle:
+          type: string
+          maxLength: 100
+          description: Reference between the transaction and the result. Many handles can point to the same shop.
+        customId:
+          type: string
+          maxLength: 255
+        shop:
+          $ref: '#/components/schemas/ShopComplete'
+
+    ShopComplete:
+      type: object
+      properties:
+        uid:
+          type: string
+          maxLength: 100
+        type:
+          type: string
+          enum: [bricks, online, atm, account]
+        category:
+          $ref: '#/components/schemas/Category'
+        tags:
+          type: array
+          items:
+            type: string
+        location:
+          $ref: '#/components/schemas/Location'
+        url:
+          type: string
+        googlePlaceId:
+          type: string
+        phoneNumber:
+          type: string
+        merchant:
+          $ref: '#/components/schemas/Merchant'
+
+    Merchant:
+      type: object
+      properties:
+        uid:
+          type: string
+          maxLength: 100
+        name:
+          type: string
+        logo:
+          type: string
+
+    Category:
+      type: object
+      properties:
+        name:
+          type: string
+        logo:
+          type: string
+
+    Location:
+      type: object
+      properties:
+        address:
+          $ref: '#/components/schemas/Address'
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+        city:
+          type: string
+        zip:
+          type: string
+        country:
+          type: string
+
+    Coordinates:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [rooftop, approximate]
+        lat:
+          type: number
+          format: double
+        long:
+          type: number
+          format: double

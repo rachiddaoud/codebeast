@@ -1,0 +1,28 @@
+spring:
+  application:
+    name: card-enrichment-api
+  http:
+    serviceclient:
+      tapix:
+        base-url: ${TAPIX_URL}
+        read-timeout: 30s
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${JWT_JWK_SET_URI}
+      client:
+        registration:
+          tapix:
+            authorization-grant-type: client_credentials
+            client-id: ${TAPIX_CLIENT_ID}
+            client-secret: ${TAPIX_CLIENT_SECRET}
+        provider:
+          tapix:
+            token-uri: ${TAPIX_AUTH_URL}/auth/realms/tapix-prod/protocol/openid-connect/token
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health

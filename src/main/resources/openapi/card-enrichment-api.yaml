@@ -1,0 +1,294 @@
+openapi: 3.0.3
+info:
+  title: Card Enrichment API
+  version: 1.0.0
+  description: |
+    Enriches card payment transactions with merchant and shop data (name, logo, category, address...).
+    Consumed by the orchestrator API. Data comes from Tapix.
+
+    `status = UNSOLVED` means Tapix doesn't know the shop yet. Keep the `tapixHandle` with the
+    transaction anyway: Tapix may resolve it later.
+
+    Auth: JWT from the in-house issuer in `Authorization: Bearer <token>`, with scope `card-enrichment:read`.
+servers:
+  - url: http://localhost:8080
+security:
+  - bearerAuth: []
+tags:
+  - name: CardEnrichment
+paths:
+  /api/v1/card-transactions/enrich:
+    post:
+      tags: [CardEnrichment]
+      operationId: enrichCardTransaction
+      summary: Enrich one card transaction
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardTransaction'
+      responses:
+        '200':
+          description: Enrichment result (found or unsolved)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichedCardTransaction'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Missing, invalid or expired JWT
+        '403':
+          description: JWT lacks the card-enrichment:read scope
+        '502':
+          $ref: '#/components/responses/TapixError'
+  /api/v1/card-transactions/enrich/batch:
+    post:
+      tags: [CardEnrichment]
+      operationId: enrichCardTransactions
+      summary: Enrich up to 250 card transactions
+      description: Results are returned in the same order as the request.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardTransactionBatch'
+      responses:
+        '200':
+          description: One result per transaction, same order as the request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/EnrichedCardTransactionBatch'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: Missing, invalid or expired JWT
+        '403':
+          description: JWT lacks the card-enrichment:read scope
+        '502':
+          $ref: '#/components/responses/TapixError'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+  responses:
+    BadRequest:
+      description: Invalid request
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+    TapixError:
+      description: Tapix could not be reached or returned an error
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+
+  schemas:
+    CardTransaction:
+      type: object
+      description: Raw card transaction data (ISO 8583 fields where applicable).
+      required: [transactionId, acceptorName]
+      properties:
+        transactionId:
+          type: string
+          maxLength: 255
+          description: Our transaction reference, echoed back in the response.
+          example: 'TX-20261102-000123'
+        acceptorName:
+          type: string
+          description: ISO 8583 field 43 (1-23) - card acceptor name / location.
+          example: 'TESCO PRAHA ZLICIN'
+        merchantId:
+          type: string
+          description: ISO 8583 field 42 - card acceptor identification code.
+          example: '820014'
+        terminalId:
+          type: string
+          description: ISO 8583 field 41 - card acceptor terminal id.
+          example: '18052001'
+        city:
+          type: string
+          description: ISO 8583 field 43 (24-36) - card acceptor city.
+          example: 'PRAHA'
+        country:
+          type: string
+          description: ISO 3166-1 alpha-2 or alpha-3 country code (never truncate alpha-3 to 2 letters).
+          example: 'CZ'
+        zip:
+          type: string
+          maxLength: 16
+          example: '15500'
+        mcc:
+          type: string
+          description: ISO 8583 field 18 - merchant category code.
+          example: '5411'
+        transactionTimestamp:
+          type: string
+          format: date-time
+          description: Local transaction date and time.
+          example: '2026-11-02T11:16:36+01:00'
+        amount:
+          type: number
+          description: Transaction amount. Negative for a refund.
+          example: 42.5
+        currency:
+          type: string
+          description: ISO 4217 code.
+          example: 'EUR'
+        ecommerce:
+          type: boolean
+          description: true for an online payment, false for a physical one.
+        channel:
+          type: string
+          enum: [POS, ATM]
+        cardToken:
+          type: string
+          maxLength: 255
+          description: Stable hashed identifier of the card. Never send the PAN.
+          example: 'B7T1533692247A'
+        clientToken:
+          type: string
+          description: Stable hashed identifier of the client.
+          example: 'C7T13423469224BFS'
+
+    CardTransactionBatch:
+      type: object
+      required: [transactions]
+      properties:
+        transactions:
+          type: array
+          minItems: 1
+          maxItems: 250
+          items:
+            $ref: '#/components/schemas/CardTransaction'
+
+    EnrichedCardTransaction:
+      type: object
+      required: [transactionId, status]
+      properties:
+        transactionId:
+          type: string
+          example: 'TX-20261102-000123'
+        status:
+          type: string
+          enum: [FOUND, UNSOLVED]
+        tapixHandle:
+          type: string
+          description: Tapix reference between this transaction and the result. Store it with the transaction.
+          example: '$91vbcF7535E43615lq7bqQ'
+        merchant:
+          $ref: '#/components/schemas/Merchant'
+        shop:
+          $ref: '#/components/schemas/Shop'
+
+    EnrichedCardTransactionBatch:
+      type: object
+      required: [results]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/EnrichedCardTransaction'
+
+    Merchant:
+      type: object
+      description: The brand (e.g. Tesco).
+      properties:
+        id:
+          type: string
+          example: 'frephafR7zekayUzu5uxu8'
+        name:
+          type: string
+          example: 'Tesco'
+        logoUrl:
+          type: string
+          example: 'https://s3.eu-central-1.amazonaws.com/files.node-prod.dateio.cz/m/538VqZ4gn33tVJJWEYa8d3/l'
+
+    Shop:
+      type: object
+      description: The specific outlet or e-shop where the payment happened.
+      properties:
+        id:
+          type: string
+          example: 'MmPdedgnvjXiRZnBJzJQKb'
+        type:
+          type: string
+          enum: [BRICKS, ONLINE, ATM, ACCOUNT]
+        category:
+          $ref: '#/components/schemas/Category'
+        tags:
+          type: array
+          items:
+            type: string
+          example: ['Hyper-Supermarket']
+        address:
+          $ref: '#/components/schemas/Address'
+        coordinates:
+          $ref: '#/components/schemas/Coordinates'
+        websiteUrl:
+          type: string
+          example: 'https://www.tesco.com'
+        googlePlaceId:
+          type: string
+        phoneNumber:
+          type: string
+
+    Category:
+      type: object
+      properties:
+        name:
+          type: string
+          example: 'Groceries'
+        logoUrl:
+          type: string
+
+    Address:
+      type: object
+      properties:
+        street:
+          type: string
+          example: 'Skandinávská 144/25'
+        city:
+          type: string
+          example: 'Praha 5'
+        zip:
+          type: string
+          example: '15500'
+        country:
+          type: string
+          example: 'CZ'
+
+    Coordinates:
+      type: object
+      properties:
+        latitude:
+          type: number
+          format: double
+          example: 50.049689
+        longitude:
+          type: number
+          format: double
+          example: 14.294543
+
+    Problem:
+      type: object
+      description: RFC 9457 problem details.
+      properties:
+        type:
+          type: string
+        title:
+          type: string
+        status:
+          type: integer
+        detail:
+          type: string
+        instance:
+          type: string
