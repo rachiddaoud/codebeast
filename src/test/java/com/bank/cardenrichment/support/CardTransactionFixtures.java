@@ -1,41 +1,29 @@
 package com.bank.cardenrichment.support;
 
-import com.bank.cardenrichment.api.model.CardTransaction;
-import com.bank.cardenrichment.api.model.CardTransactionBatch;
+import java.util.Map;
 
-import java.util.List;
-
-/** Builders for the request objects sent to our API in tests. */
+/**
+ * Request bodies sent to our API, using the Tapix parameter names.
+ * Plain maps on purpose: tests do not depend on the generated DTOs.
+ */
 public final class CardTransactionFixtures {
 
     private CardTransactionFixtures() {
     }
 
-    public static CardTransaction tescoPraha() {
-        return CardTransaction.builder()
-                .transactionId("TX-1")
-                .acceptorName("TESCO PRAHA ZLICIN")
-                .merchantId("820014")
-                .terminalId("18052001")
-                .city("PRAHA")
-                .country("CZ")
-                .mcc("5411")
-                .channel(CardTransaction.ChannelEnum.POS)
-                .build();
+    public static Map<String, Object> tescoPraha() {
+        return Map.of(
+                "customId", "TX-1",
+                "description", "TESCO PRAHA ZLICIN",
+                "merchantId", "820014",
+                "posId", "18052001",
+                "city", "PRAHA",
+                "country", "CZ",
+                "mcc", "5411",
+                "channelCode", "POS");
     }
 
-    public static CardTransaction unknownShop() {
-        return CardTransaction.builder()
-                .transactionId("TX-2")
-                .acceptorName("UNKNOWN SHOP")
-                .build();
-    }
-
-    public static CardTransaction withoutAcceptorName() {
-        return CardTransaction.builder().transactionId("TX-1").build();
-    }
-
-    public static CardTransactionBatch batchOfTescoAndUnknown() {
-        return CardTransactionBatch.builder().transactions(List.of(tescoPraha(), unknownShop())).build();
+    public static Map<String, Object> withoutDescription() {
+        return Map.of("customId", "TX-1");
     }
 }

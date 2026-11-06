@@ -24,7 +24,6 @@ public class TapixMockServer {
 
     private static final String TOKEN_PATH = "/auth/realms/tapix-prod/protocol/openid-connect/token";
     private static final String SINGLE_PATH = "/v6/shops/complete/findByCardTransaction";
-    private static final String BATCH_PATH = "/v6/shops/complete/findByCardTransactionBatch";
 
     private final ClientAndServer server = startClientAndServer();
 
@@ -37,15 +36,16 @@ public class TapixMockServer {
         registry.add("JWT_JWK_SET_URI", () -> url + "/unused");
     }
 
-    /** Token OK, single lookup -> found, batch lookup -> [found, unsolved]. */
+    /** Token OK, lookup -> found. */
     public void stubHappyPath() {
         server.reset();
         server.when(request().withMethod("POST").withPath(TOKEN_PATH)).respond(json(200, "token"));
         server.when(request().withMethod("GET").withPath(SINGLE_PATH)).respond(json(200, "found"));
-        server.when(request().withMethod("POST").withPath(BATCH_PATH))
-                .respond(response().withStatusCode(200)
-                        .withHeader("Content-Type", "application/json")
-                        .withBody("[" + read("found") + "," + read("unsolved") + "]"));
+    }
+
+    public void stubLookupUnsolved() {
+        server.clear(request().withPath(SINGLE_PATH));
+        server.when(request().withMethod("GET").withPath(SINGLE_PATH)).respond(json(200, "unsolved"));
     }
 
     public void stubSingleLookupFailure(int status) {
@@ -61,12 +61,6 @@ public class TapixMockServer {
                                 param("posId", posId),
                                 param("channelCode", channelCode),
                                 param("refresh", "false"))
-                        .withHeader("Authorization", "Bearer " + TOKEN),
-                VerificationTimes.once());
-    }
-
-    public void verifyBatchLookup() {
-        server.verify(request().withMethod("POST").withPath(BATCH_PATH)
                         .withHeader("Authorization", "Bearer " + TOKEN),
                 VerificationTimes.once());
     }

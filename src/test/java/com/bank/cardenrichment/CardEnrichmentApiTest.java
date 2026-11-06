@@ -1,6 +1,5 @@
 package com.bank.cardenrichment;
 
-import com.bank.cardenrichment.support.CardTransactionFixtures;
 import com.bank.cardenrichment.support.TapixMockServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -14,11 +13,11 @@ import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import tools.jackson.databind.json.JsonMapper;
 
-import static com.bank.cardenrichment.support.CardTransactionFixtures.batchOfTescoAndUnknown;
 import static com.bank.cardenrichment.support.CardTransactionFixtures.tescoPraha;
-import static com.bank.cardenrichment.support.CardTransactionFixtures.withoutAcceptorName;
+import static com.bank.cardenrichment.support.CardTransactionFixtures.withoutDescription;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -30,6 +29,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @SpringBootTest
 @AutoConfigureMockMvc
 class CardEnrichmentApiTest {
+
+    /** Our endpoint; adjust if the path changed with the contract. */
+    static final String ENRICH_PATH = "/api/v1/card-transactions/enrich";
 
     static final TapixMockServer tapix = new TapixMockServer();
 
@@ -55,36 +57,33 @@ class CardEnrichmentApiTest {
 
     @Test
     void enrichesOneTransaction() throws Exception {
-        mvc.perform(post("/api/v1/card-transactions/enrich", tescoPraha()))
+        mvc.perform(enrich(tescoPraha()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.transactionId").value("TX-1"))
-                .andExpect(jsonPath("$.status").value("FOUND"))
-                .andExpect(jsonPath("$.tapixHandle").value("$91vbcF7535E43615lq7bqQ"))
-                .andExpect(jsonPath("$.merchant.name").value("Tesco"))
-                .andExpect(jsonPath("$.shop.type").value("BRICKS"))
+                .andExpect(jsonPath("$.result").value("found"))
+                .andExpect(jsonPath("$.handle").value("$91vbcF7535E43615lq7bqQ"))
+                .andExpect(jsonPath("$.customId").value("TX-1"))
+                .andExpect(jsonPath("$.shop.type").value("bricks"))
                 .andExpect(jsonPath("$.shop.category.name").value("Groceries"))
-                .andExpect(jsonPath("$.shop.address.city").value("Praha 5"))
-                .andExpect(jsonPath("$.shop.coordinates.longitude").value(14.294543));
+                .andExpect(jsonPath("$.shop.merchant.name").value("Tesco"))
+                .andExpect(jsonPath("$.shop.location.address.city").value("Praha 5"))
+                .andExpect(jsonPath("$.shop.location.coordinates.long").value(14.294543));
 
         tapix.verifySingleLookup("TESCO", "18052001", "POS");
     }
 
     @Test
-    void enrichesBatchInOrder() throws Exception {
-        mvc.perform(post("/api/v1/card-transactions/enrich/batch", batchOfTescoAndUnknown()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.results[0].transactionId").value("TX-1"))
-                .andExpect(jsonPath("$.results[0].status").value("FOUND"))
-                .andExpect(jsonPath("$.results[1].transactionId").value("TX-2"))
-                .andExpect(jsonPath("$.results[1].status").value("UNSOLVED"))
-                .andExpect(jsonPath("$.results[1].shop").doesNotExist());
+    void returnsUnsolvedWhenTapixFindsNothing() throws Exception {
+        tapix.stubLookupUnsolved();
 
-        tapix.verifyBatchLookup();
+        mvc.perform(enrich(tescoPraha()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.result").value("unsolved"))
+                .andExpect(jsonPath("$.shop").doesNotExist());
     }
 
     @Test
-    void rejectsTransactionWithoutAcceptorName() throws Exception {
-        mvc.perform(post("/api/v1/card-transactions/enrich", withoutAcceptorName()))
+    void rejectsTransactionWithoutDescription() throws Exception {
+        mvc.perform(enrich(withoutDescription()))
                 .andExpect(status().isBadRequest());
 
         tapix.verifyNoLookup();
@@ -94,13 +93,13 @@ class CardEnrichmentApiTest {
     void returnsBadGatewayWhenTapixFails() throws Exception {
         tapix.stubSingleLookupFailure(500);
 
-        mvc.perform(post("/api/v1/card-transactions/enrich", tescoPraha()))
+        mvc.perform(enrich(tescoPraha()))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.detail").value("Tapix enrichment failed"));
     }
 
-    private MockHttpServletRequestBuilder post(String url, Object body) {
-        return org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post(url)
+    private MockHttpServletRequestBuilder enrich(Object body) {
+        return MockMvcRequestBuilders.post(ENRICH_PATH)
                 .with(jwt().authorities(new SimpleGrantedAuthority("SCOPE_card-enrichment:read")))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(json.writeValueAsString(body));
