@@ -1,29 +1,29 @@
 package com.bank.cardenrichment.support;
 
-import java.util.Map;
+import com.bank.cardenrichment.api.model.CardTransaction;
 
-/**
- * Request bodies sent to our API, using the Tapix parameter names.
- * Plain maps on purpose: tests do not depend on the generated DTOs.
- */
+/** Request DTOs sent to our API, using the Tapix parameter names. */
 public final class CardTransactionFixtures {
 
     private CardTransactionFixtures() {
     }
 
-    public static Map<String, Object> tescoPraha() {
-        return Map.of(
-                "customId", "TX-1",
-                "description", "TESCO PRAHA ZLICIN",
-                "merchantId", "820014",
-                "posId", "18052001",
-                "city", "PRAHA",
-                "country", "CZ",
-                "mcc", "5411",
-                "channelCode", "POS");
+    public static CardTransaction tescoPraha() {
+        CardTransaction tx = new CardTransaction();
+        tx.setCustomId("TX-1");
+        tx.setDescription("TESCO PRAHA ZLICIN");
+        tx.setMerchantId("820014");
+        tx.setPosId("18052001");
+        tx.setCity("PRAHA");
+        tx.setCountry("CZ");
+        tx.setMcc("5411");
+        tx.setChannelCode("POS");
+        return tx;
     }
 
-    public static Map<String, Object> withoutDescription() {
-        return Map.of("customId", "TX-1");
+    public static CardTransaction withoutDescription() {
+        CardTransaction tx = new CardTransaction();
+        tx.setCustomId("TX-1");
+        return tx;
     }
 }
