@@ -1,0 +1,17 @@
+{
+  "result": "found",
+  "handle": "$91vbcF7535E43615lq7bqQ",
+  "customId": "TX-1",
+  "shop": {
+    "uid": "MmPdedgnvjXiRZnBJzJQKb",
+    "type": "bricks",
+    "category": {"name": "Groceries"},
+    "tags": ["Hyper-Supermarket"],
+    "newTapixField": "ignored",
+    "location": {
+      "address": {"street": "Skandinávská 144/25", "city": "Praha 5", "zip": "15500", "country": "CZ"},
+      "coordinates": {"type": "rooftop", "lat": 50.049689, "long": 14.294543}
+    },
+    "merchant": {"uid": "538VqZ4gn33tVJJWEYa8d3@gb", "name": "Tesco", "logo": "https://logo"}
+  }
+}
