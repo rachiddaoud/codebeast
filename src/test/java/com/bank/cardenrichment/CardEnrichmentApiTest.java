@@ -1,10 +1,11 @@
 package com.bank.cardenrichment;
 
-import com.sun.net.httpserver.HttpExchange;
-import com.sun.net.httpserver.HttpServer;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockserver.integration.ClientAndServer;
+import org.mockserver.model.HttpRequest;
+import org.mockserver.verify.VerificationTimes;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -15,36 +16,35 @@ import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
-import java.io.IOException;
-import java.net.InetSocketAddress;
-import java.nio.charset.StandardCharsets;
-import java.util.List;
-import java.util.concurrent.CopyOnWriteArrayList;
-
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockserver.integration.ClientAndServer.startClientAndServer;
+import static org.mockserver.model.HttpRequest.request;
+import static org.mockserver.model.HttpResponse.response;
+import static org.mockserver.model.Parameter.param;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * Full chain: our API -> OAuth2 token -> Tapix, against a fake Tapix server.
+ * Full chain: our API -> OAuth2 token -> Tapix, against a MockServer.
  * Incoming auth is not under test: requests carry a ready-made JWT with the right scope.
  */
 @SpringBootTest
 @AutoConfigureMockMvc
 class CardEnrichmentApiTest {
 
-    static final List<String> tapixRequests = new CopyOnWriteArrayList<>();
-    static final HttpServer fakeTapix = startFakeTapix();
-    static volatile int tapixStatus = 200;
+    static final String TOKEN_PATH = "/auth/realms/tapix-prod/protocol/openid-connect/token";
+    static final String SINGLE_PATH = "/v6/shops/complete/findByCardTransaction";
+    static final String BATCH_PATH = "/v6/shops/complete/findByCardTransactionBatch";
+
+    static final ClientAndServer tapix = startClientAndServer();
 
     @Autowired
     MockMvc mvc;
 
     @DynamicPropertySource
     static void tapixProperties(DynamicPropertyRegistry registry) {
-        String url = "http://localhost:" + fakeTapix.getAddress().getPort();
+        String url = "http://localhost:" + tapix.getPort();
         registry.add("TAPIX_URL", () -> url);
         registry.add("TAPIX_AUTH_URL", () -> url);
         registry.add("TAPIX_CLIENT_ID", () -> "test-client");
@@ -54,13 +54,20 @@ class CardEnrichmentApiTest {
 
     @BeforeEach
     void reset() {
-        tapixRequests.clear();
-        tapixStatus = 200;
+        tapix.reset();
+        tapix.when(request().withMethod("POST").withPath(TOKEN_PATH))
+                .respond(json(200, """
+                        {"access_token":"test-token","token_type":"Bearer","expires_in":300}
+                        """));
+        tapix.when(request().withMethod("GET").withPath(SINGLE_PATH))
+                .respond(json(200, FOUND));
+        tapix.when(request().withMethod("POST").withPath(BATCH_PATH))
+                .respond(json(200, "[" + FOUND + "," + UNSOLVED + "]"));
     }
 
     @AfterAll
     static void stop() {
-        fakeTapix.stop(0);
+        tapix.stop();
     }
 
     @Test
@@ -79,10 +86,14 @@ class CardEnrichmentApiTest {
                 .andExpect(jsonPath("$.shop.address.city").value("Praha 5"))
                 .andExpect(jsonPath("$.shop.coordinates.longitude").value(14.294543));
 
-        assertThat(tapixRequests).singleElement().satisfies(r -> assertThat(r)
-                .startsWith("GET /v6/shops/complete/findByCardTransaction?")
-                .contains("description=TESCO", "posId=18052001", "channelCode=POS", "refresh=false",
-                        "Bearer test-token"));
+        tapix.verify(request().withMethod("GET").withPath(SINGLE_PATH)
+                        .withQueryStringParameters(
+                                param("description", ".*TESCO.*"),
+                                param("posId", "18052001"),
+                                param("channelCode", "POS"),
+                                param("refresh", "false"))
+                        .withHeader("Authorization", "Bearer test-token"),
+                VerificationTimes.once());
     }
 
     @Test
@@ -102,8 +113,9 @@ class CardEnrichmentApiTest {
                 .andExpect(jsonPath("$.results[1].status").value("UNSOLVED"))
                 .andExpect(jsonPath("$.results[1].shop").doesNotExist());
 
-        assertThat(tapixRequests).singleElement().satisfies(r -> assertThat(r)
-                .startsWith("POST /v6/shops/complete/findByCardTransactionBatch"));
+        tapix.verify(request().withMethod("POST").withPath(BATCH_PATH)
+                        .withHeader("Authorization", "Bearer test-token"),
+                VerificationTimes.once());
     }
 
     @Test
@@ -113,12 +125,14 @@ class CardEnrichmentApiTest {
                         """))
                 .andExpect(status().isBadRequest());
 
-        assertThat(tapixRequests).isEmpty();
+        tapix.verify(request().withPath("/v6/.*"), VerificationTimes.exactly(0));
     }
 
     @Test
     void returnsBadGatewayWhenTapixFails() throws Exception {
-        tapixStatus = 500;
+        tapix.clear(request().withPath(SINGLE_PATH));
+        tapix.when(request().withMethod("GET").withPath(SINGLE_PATH))
+                .respond(response().withStatusCode(500));
 
         mvc.perform(enrich("""
                         {"transactionId":"TX-1","acceptorName":"TESCO PRAHA ZLICIN"}
@@ -134,6 +148,12 @@ class CardEnrichmentApiTest {
                 .content(body);
     }
 
+    private static org.mockserver.model.HttpResponse json(int status, String body) {
+        return response().withStatusCode(status)
+                .withHeader("Content-Type", "application/json")
+                .withBody(body);
+    }
+
     private static final String FOUND = """
             {"result":"found","handle":"$91vbcF7535E43615lq7bqQ","customId":"TX-1",
              "shop":{"uid":"MmPdedgnvjXiRZnBJzJQKb","type":"bricks","category":{"name":"Groceries"},
@@ -145,39 +165,4 @@ class CardEnrichmentApiTest {
     private static final String UNSOLVED = """
             {"result":"unsolved","handle":"!7GfEUnA8uF1aull3O89Dly","customId":"TX-2"}
             """;
-
-    private static HttpServer startFakeTapix() {
-        try {
-            HttpServer server = HttpServer.create(new InetSocketAddress("localhost", 0), 0);
-            server.createContext("/auth/realms/tapix-prod/protocol/openid-connect/token", ex ->
-                    reply(ex, 200, """
-                            {"access_token":"test-token","token_type":"Bearer","expires_in":300}
-                            """));
-            server.createContext("/v6/shops/complete/findByCardTransaction", ex -> {
-                record(ex);
-                reply(ex, tapixStatus, FOUND);
-            });
-            server.createContext("/v6/shops/complete/findByCardTransactionBatch", ex -> {
-                record(ex);
-                reply(ex, tapixStatus, "[" + FOUND + "," + UNSOLVED + "]");
-            });
-            server.start();
-            return server;
-        } catch (IOException e) {
-            throw new IllegalStateException(e);
-        }
-    }
-
-    private static void record(HttpExchange ex) {
-        tapixRequests.add(ex.getRequestMethod() + " " + ex.getRequestURI() + " "
-                + ex.getRequestHeaders().getFirst("Authorization"));
-    }
-
-    private static void reply(HttpExchange ex, int status, String json) throws IOException {
-        byte[] body = json.getBytes(StandardCharsets.UTF_8);
-        ex.getResponseHeaders().add("Content-Type", "application/json");
-        ex.sendResponseHeaders(status, body.length);
-        ex.getResponseBody().write(body);
-        ex.close();
-    }
 }
