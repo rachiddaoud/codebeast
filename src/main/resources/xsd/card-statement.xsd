@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Card statement sent by the bank: contracts, their closing cycles, cards and card operations.
+  Only the parts we use are described in detail. The operations are what we export and send to Tapix.
+-->
+<xs:schema xmlns:xs="http://www.w3.org/2001/XMLSchema" elementFormDefault="qualified">
+
+    <xs:element name="Bank">
+        <xs:complexType>
+            <xs:sequence>
+                <xs:element name="Contract" type="Contract" maxOccurs="unbounded"/>
+            </xs:sequence>
+        </xs:complexType>
+    </xs:element>
+
+    <xs:complexType name="Contract">
+        <xs:sequence>
+            <xs:element name="BankCode" type="xs:string"/>
+            <xs:element name="ServiceCode" type="xs:string"/>
+            <xs:element name="IssuerContracted" type="xs:string"/>
+            <xs:element name="ContractID" type="xs:string"/>
+            <xs:element name="BankAccount" type="xs:string"/>
+            <xs:choice>
+                <xs:element name="Cycle" type="Cycle" maxOccurs="unbounded"/>
+                <xs:element name="Prepaid" type="Prepaid"/>
+                <xs:element name="Card" type="Card" maxOccurs="unbounded"/>
+            </xs:choice>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Cycle">
+        <xs:sequence>
+            <xs:element name="Year" type="xs:gYear"/>
+            <xs:element name="CalendarType" type="xs:string"/>
+            <xs:element name="ClosureDate" type="xs:date"/>
+            <xs:element name="CycleNumber" type="xs:int"/>
+            <xs:element name="ClosureSituation" type="ClosureSituation"/>
+            <xs:element name="ContractOperation" type="ContractOperation" minOccurs="0" maxOccurs="unbounded"/>
+            <xs:element name="Card" type="Card" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="ClosureSituation">
+        <xs:sequence>
+            <xs:element name="ClosureDate" type="xs:date"/>
+            <xs:element name="StatementDate" type="xs:date"/>
+            <xs:element name="DirectDebitDate" type="xs:date" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Contract-level movements (fees, repayments...). Not exported. -->
+    <xs:complexType name="ContractOperation">
+        <xs:sequence>
+            <xs:element name="OperationDate" type="xs:date"/>
+            <xs:element name="Label" type="xs:string"/>
+            <xs:element name="Amount" type="xs:decimal"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Prepaid">
+        <xs:sequence>
+            <xs:element name="Card" type="Card" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="Card">
+        <xs:sequence>
+            <xs:element name="CumulOprPor" type="CumulOprPor" minOccurs="0"/>
+            <xs:element name="Operation" type="Operation" minOccurs="0" maxOccurs="unbounded"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Totals of the card holder's operations over the cycle. -->
+    <xs:complexType name="CumulOprPor">
+        <xs:sequence>
+            <xs:element name="OperationCount" type="xs:int"/>
+            <xs:element name="TotalAmount" type="xs:decimal"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <!-- Optional fields are the extra ones Tapix uses. -->
+    <xs:complexType name="Operation">
+        <xs:sequence>
+            <xs:element name="OperationID" type="xs:string" minOccurs="0"/>
+            <xs:element name="CardNumber" type="xs:string"/>
+            <xs:element name="CardExpiryDate" type="xs:string"/>
+            <xs:element name="MerchantName" type="xs:string"/>
+            <xs:element name="MerchantLocality" type="xs:string"/>
+            <xs:element name="MerchantZip" type="xs:string" minOccurs="0"/>
+            <xs:element name="MerchantCountry" type="xs:string" minOccurs="0"/>
+            <xs:element name="MCC" type="xs:string"/>
+            <xs:element name="OprDateAndTime" type="xs:dateTime"/>
+            <xs:element name="Amount" type="xs:decimal" minOccurs="0"/>
+            <xs:element name="Currency" type="xs:string" minOccurs="0"/>
+            <xs:element name="TransactionConditions" type="xs:string"/>
+            <xs:element name="TrnTrtCode" type="xs:string"/>
+            <xs:element name="TransactionalDataElements" type="TransactionalDataElements"/>
+        </xs:sequence>
+    </xs:complexType>
+
+    <xs:complexType name="TransactionalDataElements">
+        <xs:sequence>
+            <xs:element name="CardAcceptorID" type="xs:string"/>
+            <xs:element name="CardAcceptorTerminalID" type="xs:string" minOccurs="0"/>
+        </xs:sequence>
+    </xs:complexType>
+</xs:schema>

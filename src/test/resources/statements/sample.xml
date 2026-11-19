@@ -1,0 +1,92 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Bank>
+    <!-- Credit card contract: operations sit in a closing cycle -->
+    <Contract>
+        <BankCode>BCEE</BankCode>
+        <ServiceCode>VISA</ServiceCode>
+        <IssuerContracted>Y</IssuerContracted>
+        <ContractID>C-001</ContractID>
+        <BankAccount>LU280019400644750000</BankAccount>
+        <Cycle>
+            <Year>2026</Year>
+            <CalendarType>MONTHLY</CalendarType>
+            <ClosureDate>2026-10-31</ClosureDate>
+            <CycleNumber>10</CycleNumber>
+            <ClosureSituation>
+                <ClosureDate>2026-10-31</ClosureDate>
+                <StatementDate>2026-11-02</StatementDate>
+                <DirectDebitDate>2026-11-15</DirectDebitDate>
+            </ClosureSituation>
+            <ContractOperation>
+                <OperationDate>2026-10-01</OperationDate>
+                <Label>Annual fee</Label>
+                <Amount>-30.00</Amount>
+            </ContractOperation>
+            <Card>
+                <CumulOprPor>
+                    <OperationCount>2</OperationCount>
+                    <TotalAmount>54.40</TotalAmount>
+                </CumulOprPor>
+                <Operation>
+                    <OperationID>OP-1</OperationID>
+                    <CardNumber>4111 1111 1111 1234</CardNumber>
+                    <CardExpiryDate>2812</CardExpiryDate>
+                    <MerchantName>  CAFE DE PARIS, GARE  </MerchantName>
+                    <MerchantLocality>LUXEMBOURG</MerchantLocality>
+                    <MerchantZip>1616</MerchantZip>
+                    <MerchantCountry>lu</MerchantCountry>
+                    <MCC>5812</MCC>
+                    <OprDateAndTime>2026-10-12T08:15:00+02:00</OprDateAndTime>
+                    <Amount>4.40</Amount>
+                    <Currency>eur</Currency>
+                    <TransactionConditions>00</TransactionConditions>
+                    <TrnTrtCode>05</TrnTrtCode>
+                    <TransactionalDataElements>
+                        <CardAcceptorID>820014</CardAcceptorID>
+                        <CardAcceptorTerminalID>18052001</CardAcceptorTerminalID>
+                    </TransactionalDataElements>
+                </Operation>
+                <Operation>
+                    <OperationID>OP-2</OperationID>
+                    <CardNumber>4111111111111234</CardNumber>
+                    <CardExpiryDate>2812</CardExpiryDate>
+                    <MerchantName>AMAZON EU</MerchantName>
+                    <MerchantLocality>LUXEMBOURG</MerchantLocality>
+                    <MCC>742</MCC>
+                    <OprDateAndTime>2026-10-20T21:03:10+02:00</OprDateAndTime>
+                    <Amount>-50.00</Amount>
+                    <Currency>EUR</Currency>
+                    <TransactionConditions>59</TransactionConditions>
+                    <TrnTrtCode>06</TrnTrtCode>
+                    <TransactionalDataElements>
+                        <CardAcceptorID>AMZ0001</CardAcceptorID>
+                    </TransactionalDataElements>
+                </Operation>
+            </Card>
+        </Cycle>
+    </Contract>
+    <!-- Debit card contract: cards directly under the contract -->
+    <Contract>
+        <BankCode>BCEE</BankCode>
+        <ServiceCode>VPAY</ServiceCode>
+        <IssuerContracted>N</IssuerContracted>
+        <ContractID>C-002</ContractID>
+        <BankAccount>LU120019400644750001</BankAccount>
+        <Card>
+            <Operation>
+                <OperationID>OP-3</OperationID>
+                <CardNumber>5500000000009876</CardNumber>
+                <CardExpiryDate>2709</CardExpiryDate>
+                <MerchantName>CACTUS</MerchantName>
+                <MerchantLocality>BERTRANGE</MerchantLocality>
+                <MCC>5411</MCC>
+                <OprDateAndTime>2026-10-25T10:00:00+02:00</OprDateAndTime>
+                <TransactionConditions>00</TransactionConditions>
+                <TrnTrtCode>05</TrnTrtCode>
+                <TransactionalDataElements>
+                    <CardAcceptorID>CAC01</CardAcceptorID>
+                </TransactionalDataElements>
+            </Operation>
+        </Card>
+    </Contract>
+</Bank>

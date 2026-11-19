@@ -18,6 +18,7 @@
         <java.version>25</java.version>
         <openapi-generator.version>7.27.0</openapi-generator.version>
         <mapstruct.version>1.6.3</mapstruct.version>
+        <jaxb-plugin.version>4.0.16</jaxb-plugin.version>
     </properties>
 
     <dependencies>
@@ -55,6 +56,14 @@
             <artifactId>mapstruct</artifactId>
             <version>${mapstruct.version}</version>
         </dependency>
+        <dependency>
+            <groupId>jakarta.xml.bind</groupId>
+            <artifactId>jakarta.xml.bind-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.glassfish.jaxb</groupId>
+            <artifactId>jaxb-runtime</artifactId>
+        </dependency>
 
         <dependency>
             <groupId>org.springframework.boot</groupId>
@@ -70,6 +79,25 @@
 
     <build>
         <plugins>
+            <!-- Card statement XSD: JAXB classes read by OperationCsv -->
+            <plugin>
+                <groupId>org.jvnet.jaxb</groupId>
+                <artifactId>jaxb-maven-plugin</artifactId>
+                <version>${jaxb-plugin.version}</version>
+                <executions>
+                    <execution>
+                        <id>card-statement</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <schemaDirectory>${project.basedir}/src/main/resources/xsd</schemaDirectory>
+                            <generatePackage>com.bank.cardenrichment.statement</generatePackage>
+                            <noFileHeader>true</noFileHeader>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
             <plugin>
                 <groupId>org.openapitools</groupId>
                 <artifactId>openapi-generator-maven-plugin</artifactId>
