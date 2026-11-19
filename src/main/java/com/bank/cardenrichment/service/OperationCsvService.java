@@ -5,14 +5,13 @@ import com.bank.cardenrichment.mapper.OperationCsvMapper;
 import com.bank.cardenrichment.statement.Bank;
 import com.bank.cardenrichment.statement.Card;
 import com.bank.cardenrichment.statement.Contract;
+import com.bank.cardenrichment.xml.StatementReader;
 import lombok.RequiredArgsConstructor;
-import org.springframework.oxm.jaxb.Jaxb2Marshaller;
 import org.springframework.stereotype.Service;
 import tools.jackson.dataformat.csv.CsvMapper;
 import tools.jackson.dataformat.csv.CsvSchema;
 import tools.jackson.dataformat.csv.CsvWriteFeature;
 
-import javax.xml.transform.stream.StreamSource;
 import java.io.InputStream;
 import java.io.Writer;
 import java.util.List;
@@ -27,11 +26,11 @@ public class OperationCsvService {
     private static final CsvMapper CSV = CsvMapper.builder().enable(CsvWriteFeature.STRICT_CHECK_FOR_QUOTING).build();
     private static final CsvSchema SCHEMA = CSV.schemaFor(OperationCsvRow.class).withHeader();
 
-    private final Jaxb2Marshaller statementMarshaller;
+    private final StatementReader statementReader;
     private final OperationCsvMapper mapper;
 
     public void export(InputStream xml, Writer csv) {
-        Bank bank = (Bank) statementMarshaller.unmarshal(new StreamSource(xml));
+        Bank bank = statementReader.read(xml);
         List<OperationCsvRow> rows = bank.getContract().stream()
                 .flatMap(OperationCsvService::cards)
                 .flatMap(card -> card.getOperation().stream())

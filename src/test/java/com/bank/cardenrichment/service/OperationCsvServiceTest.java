@@ -1,8 +1,8 @@
 package com.bank.cardenrichment.service;
 
-import com.bank.cardenrichment.config.StatementConfig;
 import com.bank.cardenrichment.mapper.OperationCsvMapper;
 import com.bank.cardenrichment.mapper.OperationCsvMapperImpl;
+import com.bank.cardenrichment.xml.StatementReader;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.oxm.XmlMappingException;
@@ -16,7 +16,7 @@ import java.nio.charset.StandardCharsets;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-@SpringJUnitConfig({StatementConfig.class, OperationCsvMapperImpl.class, OperationCsvService.class})
+@SpringJUnitConfig({StatementReader.class, OperationCsvMapperImpl.class, OperationCsvService.class})
 class OperationCsvServiceTest {
 
     static final String CONTRACT_START = """

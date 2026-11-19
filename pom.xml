@@ -87,7 +87,7 @@
 
     <build>
         <plugins>
-            <!-- Card statement XSD: JAXB classes read by OperationCsvService -->
+            <!-- Card statement XSD: JAXB classes read by StatementReader -->
             <plugin>
                 <groupId>org.jvnet.jaxb</groupId>
                 <artifactId>jaxb-maven-plugin</artifactId>
